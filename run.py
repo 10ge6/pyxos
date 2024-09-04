@@ -5,6 +5,7 @@ from src import *
 
 bridge = Bridge()
 nodes = []
+procs = []
 
 time.sleep(1)  # Small delay to allow the bridge to set up
 
@@ -23,3 +24,10 @@ time.sleep(1)
 for n in nodes:
     p = Process(target=n.run, daemon=True)
     p.start()
+    procs.append(p)
+
+try:
+    for p in procs:
+        p.join()
+except KeyboardInterrupt:
+    print("\rStopping...")
