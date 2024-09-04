@@ -20,8 +20,7 @@ class Acceptor:
         self.bridge = bridge_port
         
         self._listner.start()
-
-        self.messenger      = None    
+ 
         self.promised_id    = None
         self.accepted_id    = None
         self.accepted_value = None
@@ -75,12 +74,12 @@ class Acceptor:
         
         print(f"Acceptor received prepare request: {proposal_id} from Proposer at port {from_port}")
         
-        if proposal_id > self.promised_id:
+        if self.promised_id is None or proposal_id > self.promised_id:
             self.promised_id = proposal_id
         
         print(f"Acceptor promising to proposal: {proposal_id}")
         
-        self.send_message_to_bridge("spm", from_port, str(proposal_id), str(self.accepted_id), self.accepted_value)
+        self.send_message_to_bridge("spm", from_port, str(proposal_id), str(self.accepted_id or ""), self.accepted_value or "")
                     
     def recv_accept_request(self, proposal_id: str, value:str):
         '''

@@ -79,7 +79,7 @@ class Bridge:
             # Handle Paxos protocol messages (prp, prm, act, sad)
             elif data[0] == 'prp':  # If it's a prepare request
                 self.send_prepare(client_socket.getpeername()[1], data[1])
-            elif data[0] == 'prm':  # Promise message
+            elif data[0] == 'spm':  # Promise message
                 self.send_promise(client_socket.getpeername()[1], *data[1:])
             elif data[0] == 'act':  # Accept request
                 self.send_accept(client_socket.getpeername()[1], *data[1:])
@@ -89,8 +89,8 @@ class Bridge:
                 print(f"Unknown message type: {data[0]}")
         except Exception as e:
             print(f"Error while handling client message: {e}")
-        # finally:
-        #     client_socket.close()
+        finally:
+            client_socket.close()
     
     def listner_requests(self):
         '''
@@ -154,7 +154,7 @@ class Bridge:
         Envia uma promessa para um propositor específico
         '''
         print(f"Bridge routing promise from Acceptor at port {port} to Proposer at port {prop_port}")
-        self.send_message(prop_port, "prm", port, id_proposal, previous_id, accepted_value)
+        self.send_message(int(prop_port), "prm", str(port), id_proposal, previous_id, accepted_value)
 
     def send_accept(self, port:int, id_proposal, proposal_value):
         '''
