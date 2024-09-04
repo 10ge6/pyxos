@@ -6,8 +6,12 @@ import socket
 class Learner:
     def __init__(self, bridge_port: int):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._sock.bind(("localhost"), 0)
+        self._sock.bind(("localhost", 0))  # Bind the acceptor socket
         self._addr:tuple[str, int] = self._sock.getsockname()
+
+        self.bridge_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.bridge_socket.connect(("localhost", bridge_port))  # Establish a connection to the bridge
+        
         self._listner = Thread(target=self.listner_requests, daemon=True)
         self.bridge = bridge_port
 
@@ -28,15 +32,24 @@ class Learner:
         '''
         Envia mensagens para o bridge
         '''
-
         msg = (";".join((reqtype,)+args)+"!").encode()
-        Thread(target=self._sock.sendto, args=(msg, ("localhost", self.bridge)), daemon=True).start()
-    
+        print(f"Learner sending message to bridge: {msg}")
+
+        def send():
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.connect(("localhost", self.bridge))
+                    s.sendall(msg)
+                    print(f"Learner message sent to bridge: {msg}")
+            except (BrokenPipeError, OSError) as e:
+                print(f"Failed to send message to bridge at port {self.bridge}: {e}")
+        
+        Thread(target=send, daemon=True).start()
+
     def listner_requests(self):
         '''
         Escuta todas as requisições que chegam
         '''
-
         self._sock.listen()
         while True:
             skt, addr = self._sock.accept()
@@ -44,6 +57,7 @@ class Learner:
             for b in iter(lambda: skt.recv(1), b'!'):
                 msg += b
             data = msg.decode().split(';')
+            print(f"Learner received: {data} from {addr}")
             self._paths[data[0]](*data[1:])
 
     @property
@@ -55,6 +69,9 @@ class Learner:
         '''
         Called when an Accepted message is received from an acceptor
         '''
+        
+        print(f"Learner received accepted value {accepted_value} for proposal {proposal_id} from Acceptor at port {from_port}")
+        
         if self.final_value is not None:
             return # already done
 
@@ -90,6 +107,8 @@ class Learner:
             self.final_proposal_id = proposal_id
             self.proposals         = None
             self.acceptors         = None
+            
+            print(f"Learner reached consensus on value {accepted_value} for proposal {proposal_id}")
 
             # self.messenger.on_resolution( proposal_id, accepted_value )
     

@@ -1,3 +1,4 @@
+import time
 from multiprocessing import Process
 from random import randint
 from src import *
@@ -5,8 +6,10 @@ from src import *
 bridge = Bridge()
 nodes = []
 
+time.sleep(1)  # Small delay to allow the bridge to set up
+
 for _ in range(randint(1, 1)):
-    nodes.append(Proposer(bridge.port))
+    nodes.append(Proposer(bridge.port, "value1"))
 
 for _ in range(randint(1, 5)):
     nodes.append(Acceptor(bridge.port))
