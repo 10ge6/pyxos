@@ -33,7 +33,7 @@ class Proposer:
             "qrm": self.set_quorum
         }
 
-        self.send_message_to_bridge("spp", "PROPOSER")
+        self.send_message_to_bridge("spp", "PROPOSER", str(self._addr[1]))
 
     def send_message_to_bridge(self, reqtype:str, *args:str):
         '''

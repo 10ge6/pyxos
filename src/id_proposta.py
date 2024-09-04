@@ -9,6 +9,9 @@ class IdProposta:
     def __lt__(self, value) -> bool:
         return self._id*self._porta < value._id*value._porta
     
+    def __gt__(self, value) -> bool:
+        return self._id*self._porta > value._id*value._porta
+    
     def __eq__(self, value) -> bool:
         return self._id*self._porta == value._id*value._porta
     

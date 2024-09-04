@@ -26,7 +26,7 @@ class Learner:
             "qrm": self.set_quorum
         }
 
-        self.send_message_to_bridge("spp", "LEARNER")
+        self.send_message_to_bridge("spp", "LEARNER", str(self._addr[1]))
 
     def send_message_to_bridge(self, reqtype:str, *args:str):
         '''

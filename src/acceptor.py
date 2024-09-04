@@ -31,7 +31,7 @@ class Acceptor:
             "act": self.recv_accept_request
         }
 
-        self.send_message_to_bridge("spp", "ACCEPTOR")
+        self.send_message_to_bridge("spp", "ACCEPTOR", str(self._addr[1]))
     
     def send_message_to_bridge(self, reqtype:str, *args:str):
         '''

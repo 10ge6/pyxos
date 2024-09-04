@@ -31,3 +31,4 @@ try:
         p.join()
 except KeyboardInterrupt:
     print("\rStopping...")
+    print(bridge._proposers, bridge._acceptors, bridge._learners, sep="\n")

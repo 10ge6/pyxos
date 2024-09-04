@@ -60,15 +60,19 @@ class Bridge:
             # Handle 'spp' (node registration) message
             if data[0] == 'spp':  # If it's a registration message
                 node_type = data[1]
+                try:
+                    port = int(data[2])
+                except IndexError:
+                    port = client_socket.getpeername()[1]
                 if node_type == "PROPOSER":
-                    self._proposers.append(client_socket.getpeername()[1])
-                    print(f"Registered Proposer at port {client_socket.getpeername()[1]}")
+                    self._proposers.append(port)
+                    print(f"Registered Proposer at port {port}")
                 elif node_type == "ACCEPTOR":
-                    self._acceptors.append(client_socket.getpeername()[1])
-                    print(f"Registered Acceptor at port {client_socket.getpeername()[1]}")
+                    self._acceptors.append(port)
+                    print(f"Registered Acceptor at port {port}")
                 elif node_type == "LEARNER":
-                    self._learners.append(client_socket.getpeername()[1])
-                    print(f"Registered Learner at port {client_socket.getpeername()[1]}")
+                    self._learners.append(port)
+                    print(f"Registered Learner at port {port}")
                 else:
                     print(f"Unknown node type: {node_type}")
 
@@ -85,8 +89,8 @@ class Bridge:
                 print(f"Unknown message type: {data[0]}")
         except Exception as e:
             print(f"Error while handling client message: {e}")
-        finally:
-            client_socket.close()
+        # finally:
+        #     client_socket.close()
     
     def listner_requests(self):
         '''
