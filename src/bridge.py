@@ -9,7 +9,8 @@ class Bridge:
         self._sock.listen()  # Make sure the socket is listening for connections
         print(f"Bridge is listening on {self._addr}")
         self._listner = Thread(target=self.listner_requests, daemon=True)
-        self._listner = Thread(target=self.listner_requests, daemon=True)
+        print(f"Bridge is listening on {self._addr}")
+        self._listner.start()
 
         # Lista dos participantes do paxos. Cada lista recebe as portas dos acceptors, proposers e learners, respectivamente
         self._acceptors:list[int] = []
@@ -37,54 +38,89 @@ class Bridge:
         '''
         Handle communication with a single client
         '''
-        msg = b''
-        for b in iter(lambda: client_socket.recv(1), b'!'):
-            msg += b
-        data = msg.decode().split(';')
-        print(f"Bridge received: {data} from {client_socket.getpeername()}")
-        # Add logic to handle received messages
-        if data[0] == 'prp':  # If it's a prepare request
-            self.send_prepare(client_socket.getpeername()[1], data[1])
-        elif data[0] == 'prm':  # Promise message
-            self.send_promise(client_socket.getpeername()[1], *data[1:])
-        elif data[0] == 'act':  # Accept request
-            self.send_accept(client_socket.getpeername()[1], *data[1:])
-        elif data[0] == 'sad':  # Accepted message
-            self.send_accepted(client_socket.getpeername()[1], *data[1:])
-        else:
-            print(f"Unknown message type: {data}")
-    
-        client_socket.close()
+        msg = b''  # Initialize msg as an empty byte string
+        try:
+            # Read message byte by byte until '!' is found (end of message)
+            for b in iter(lambda: client_socket.recv(1), b''):
+                if not b:  # If recv() returns empty, connection was closed
+                    print(f"Connection closed by {client_socket.getpeername()}")
+                    break
+                msg += b
+                if b == b'!':  # End of message reached
+                    break
+
+            if not msg:
+                print("Received empty message, closing connection.")
+                return
+
+            # Decode and split the message
+            data = msg.decode().strip('!').split(';')
+            print(f"Bridge received: {data} from {client_socket.getpeername()}")
+
+            # Handle 'spp' (node registration) message
+            if data[0] == 'spp':  # If it's a registration message
+                node_type = data[1]
+                if node_type == "PROPOSER":
+                    self._proposers.append(client_socket.getpeername()[1])
+                    print(f"Registered Proposer at port {client_socket.getpeername()[1]}")
+                elif node_type == "ACCEPTOR":
+                    self._acceptors.append(client_socket.getpeername()[1])
+                    print(f"Registered Acceptor at port {client_socket.getpeername()[1]}")
+                elif node_type == "LEARNER":
+                    self._learners.append(client_socket.getpeername()[1])
+                    print(f"Registered Learner at port {client_socket.getpeername()[1]}")
+                else:
+                    print(f"Unknown node type: {node_type}")
+
+            # Handle Paxos protocol messages (prp, prm, act, sad)
+            elif data[0] == 'prp':  # If it's a prepare request
+                self.send_prepare(client_socket.getpeername()[1], data[1])
+            elif data[0] == 'prm':  # Promise message
+                self.send_promise(client_socket.getpeername()[1], *data[1:])
+            elif data[0] == 'act':  # Accept request
+                self.send_accept(client_socket.getpeername()[1], *data[1:])
+            elif data[0] == 'sad':  # Accepted message
+                self.send_accepted(client_socket.getpeername()[1], *data[1:])
+            else:
+                print(f"Unknown message type: {data[0]}")
+        except Exception as e:
+            print(f"Error while handling client message: {e}")
+        finally:
+            client_socket.close()
     
     def listner_requests(self):
         '''
         Escuta todas as requisições que chegam
         '''
-
-        self._sock.listen()
+        print("Bridge is now listening for incoming connections...")
         while True:
-            skt, addr = self._sock.accept()
-            print(f"Accepted connection from {addr}")
-            Thread(target=self.handle_client, args=(skt,), daemon=True).start()
+            try:
+                skt, addr = self._sock.accept()  # Accept incoming connections
+                print(f"Accepted connection from {addr}")
+                Thread(target=self.handle_client, args=(skt,), daemon=True).start()
+            except Exception as e:
+                print(f"Error accepting connection: {e}")
 
-    def send_message(self, port:int, reqtype:str, *args:str):
+    def send_message(self, port: int, reqtype: str, *args: str):
         '''
-        Envia mensagens para os outros nós
+        Sends messages to other nodes with retries in case of failure
         '''
-        msg = (";".join((reqtype,)+args)+"!").encode()
+        msg = (";".join((reqtype,) + args) + "!").encode()
         print(f"Bridge sending message: {msg} to port {port}")
 
         def send():
-            try:
-                if self._sock.fileno() == -1:
-                    print(f"Socket is closed, cannot send message: {reqtype}")
-                    return
+            retries = 3
+            while retries > 0:
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                        s.connect(("localhost", port))
+                        s.sendall(msg)
+                        print(f"Message sent to node at port {port}: {reqtype}")
+                    break  # Break out of loop if successful
+                except (BrokenPipeError, OSError) as e:
+                    retries -= 1
+                    print(f"Failed to send message to node at port {port}: {e}. Retries left: {retries}")
 
-                self._sock.sendto(msg, ("localhost", port))
-                print(f"Message sent to node at port {port}: {reqtype}")
-            except (BrokenPipeError, OSError) as e:
-                print(f"Failed to send message to node at port {port}: {e}")
-            
         Thread(target=send, daemon=True).start()
 
 
@@ -146,5 +182,4 @@ class Bridge:
         return self._addr[1]
     
     def run(self):
-        self._listner.start()
-        self._listner.join()
+        print("Running bridge...")

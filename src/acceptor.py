@@ -8,12 +8,18 @@ class Acceptor:
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.bind(("localhost", 0))  # Bind the acceptor socket
         self._addr:tuple[str, int] = self._sock.getsockname()
+        
+        # Immediately start listening for incoming connections
+        self._sock.listen()  
+        print(f"Acceptor listening for messages on {self._addr}")
 
         self.bridge_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.bridge_socket.connect(("localhost", bridge_port))  # Establish a connection to the bridge
         
         self._listner = Thread(target=self.listner_requests, daemon=True)
         self.bridge = bridge_port
+        
+        self._listner.start()
 
         self.messenger      = None    
         self.promised_id    = None
@@ -92,5 +98,22 @@ class Acceptor:
             self.send_message_to_bridge("sad", str(proposal_id), value)
     
     def run(self):
-        self._listner.start()
-        self._listner.join()
+        '''
+        Runs the acceptor to listen for messages from the bridge
+        '''
+        self._sock.listen()
+        print(f"Acceptor listening for messages on {self._addr}")
+
+        while True:
+            skt, addr = self._sock.accept()  # Keep accepting new messages
+            msg = b''
+            for b in iter(lambda: skt.recv(1), b'!'):
+                msg += b
+            data = msg.decode().split(';')
+            print(f"Acceptor received: {data} from {addr}")
+
+            # Handle Prepare message
+            if data[0] == 'prp':
+                self.recv_prepare(data[1], data[2])  # Process Prepare message
+            skt.close()
+        

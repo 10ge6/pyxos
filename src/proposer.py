@@ -10,7 +10,11 @@ class Proposer:
         self._addr:tuple[str, int] = self._sock.getsockname()
 
         self.bridge_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.bridge_socket.connect(("localhost", bridge_port))  # Establish a connection to the bridge
+        try:
+            self.bridge_socket.connect(("localhost", bridge_port))  # Connect to the bridge
+            print(f"Proposer connected to bridge on port {bridge_port}")
+        except Exception as e:
+            print(f"Error connecting to bridge: {e}")
         
         self._listner = Thread(target=self.listner_requests, daemon=True)
         self.bridge = bridge_port
@@ -68,11 +72,12 @@ class Proposer:
         Sends a prepare request to all Acceptors as the first step in attempting to
         acquire leadership of the Paxos instance. 
         '''
-        self.send_message_to_bridge("qrm")
+        #self.send_message_to_bridge("qrm")
         self.promises_rcvd = set()
         self.proposal_id   = IdProposta(self.next_proposal_number, self._addr[1])
         self.next_proposal_number += 1
-        self.send_message_to_bridge("spp", str(self.proposal_id))
+        print(f"Proposer sending prepare request with proposal ID: {self.proposal_id}")
+        self.send_message_to_bridge("prp", str(self.proposal_id))
 
     def recv_promise(self, from_port:str, proposal_id:str, prev_accepted_id:str, prev_accepted_value:str):
         '''
@@ -106,7 +111,5 @@ class Proposer:
     
     def run(self):
         self._listner.start()
-        time.sleep(1)  # Give time for registration to complete
-        print(f"Proposer {self._addr} is sending a Prepare request.")
         self.prepare()
         self._listner.join()

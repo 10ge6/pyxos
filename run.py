@@ -16,6 +16,9 @@ for _ in range(randint(1, 5)):
 
 for _ in range(randint(1, 10)):
     nodes.append(Learner(bridge.port))
+    
+# Add another small delay before the proposer starts
+time.sleep(1)
 
 for n in nodes:
     p = Process(target=n.run, daemon=True)
